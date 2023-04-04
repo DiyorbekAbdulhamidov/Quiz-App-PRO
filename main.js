@@ -62,7 +62,6 @@ function init(extraTime) {
 		const question = generateQuestion();
 		renderGame(question, extraTime);
 	} catch (err) {
-		// alert(err.message);
 	}
 }
 
@@ -104,7 +103,6 @@ function renderInfo() {
 	orderElm.innerText = questions.length;
 	// correctElm.innerText = correct;
 	// incorrectElm.innerText = incorrect;
-	// timedElm.innerText = timed;
 
 }
 
