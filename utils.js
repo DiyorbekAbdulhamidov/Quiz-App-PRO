@@ -7,4 +7,3 @@ export function interval(fn, time) {
 
 	return () => clearInterval(intervalID);
 }
-// 

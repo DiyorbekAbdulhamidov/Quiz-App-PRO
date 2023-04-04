@@ -103,6 +103,7 @@ function renderInfo() {
 	orderElm.innerText = questions.length;
 	// correctElm.innerText = correct;
 	// incorrectElm.innerText = incorrect;
+	// timedElm.innerText = timed;
 
 }
 
