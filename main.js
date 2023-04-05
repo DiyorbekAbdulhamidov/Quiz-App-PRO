@@ -3,19 +3,22 @@ import { randomNumber, interval } from "./utils.js";
 const operationElm = document.getElementById("operation");
 const number_1 = document.getElementById("number_1");
 const number_2 = document.getElementById("number_2");
-const answersContent = document.querySelector(".answers_content");
+const answersContent = document.querySelector(".answers");
 const timeElm = document.querySelector(".time");
 const orderElm = document.querySelector(".order");
-// const incorrectElm = document.querySelector(".incorrect");
-// const correctElm = document.querySelector(".correct");
-// const timedElm = document.querySelector(".timed");
-const javob = document.querySelector(".javob");
+const incorrectElm = document.querySelector(".incorrect");
+const correctElm = document.querySelector(".correct");
+const timedElm = document.querySelector(".timed");
+const startBtn = document.getElementById("start");
+const gameZone = document.getElementById("game");
+const resultZone = document.getElementById("result");
+const pointsContent = document.querySelector(".points");
 
 // CONSTANTS
 const MAX_SIZE = 101;
 const INTERVAL = 20;
 const QUESTION_TIME = 5;
-const QUESTION_COUNT = 14;
+const QUESTION_COUNT = 5;
 
 // LOGIC VARIABLES
 const operations = ["+", "-", "*"];
@@ -29,14 +32,15 @@ function generateAnswers(correctAnswer) {
 
 	for (let i = 1; i <= 3; i++) {
 		const answer = randomNumber(correctAnswer + INTERVAL, correctAnswer - INTERVAL);
-		answers[i] = answer;
+		if (answers.includes(answer)) i--;
+		else answers[i] = answer;
 	}
 
 	return answers.sort(() => Math.random() - 0.5);
 }
 
 function generateQuestion() {
-	if (questions.length === QUESTION_COUNT) location.href = "/html/finish.html";
+	if (questions.length === QUESTION_COUNT) throw new Error("Finished");
 	const number1 = randomNumber(MAX_SIZE);
 	const number2 = randomNumber(MAX_SIZE);
 	const operation = operations[randomNumber(operations.length)];
@@ -57,11 +61,15 @@ function generateQuestion() {
 	return question;
 }
 
-function init(extraTime) {
+function start(extraTime) {
 	try {
 		const question = generateQuestion();
 		renderGame(question, extraTime);
 	} catch (err) {
+		renderPoints();
+		gameZone.classList.add("hide");
+		renderResult();
+		resultZone.classList.remove("hide");
 	}
 }
 
@@ -76,92 +84,108 @@ function renderTimer(timedFn, extraTime = 0) {
 
 	function handleTimer() {
 		if (controller.time === 0) {
-			timeof();
 			controller.clear();
 			timedFn();
 		} else timeElm.innerText = --controller.time;
 	}
+
 	return controller;
 }
 
 function renderGame({ answers, correctAnswer, ...question }, extraTime) {
+	renderPoints();
 	renderQuestion(question);
-	const controller = renderTimer(init, extraTime);
+	renderInfo();
+	const controller = renderTimer(start, extraTime);
 	renderAnswers(answers, correctAnswer, controller);
 }
 
 function renderInfo() {
 	const tempQuestions = questions.slice(0, questions.length - 1);
-	const { correct, incorrect, timed } = tempQuestions.reduce(
-		(acc, { status }) => {
-			acc[status]++;
-			return acc;
-		},
-		{ correct: 0, incorrect: 0, timed: 0 }
-	);
+	const correctCount = tempQuestions.filter(({ status }) => status === "correct").length;
+	const incorrectCount = tempQuestions.filter(({ status }) => status === "incorrect").length;
+	const timedCount = tempQuestions.filter(({ status }) => status === "timed").length;
 
 	orderElm.innerText = questions.length;
-	// correctElm.innerText = correct;
-	// incorrectElm.innerText = incorrect;
-	// timedElm.innerText = timed;
-
+	correctElm.innerText = correctCount;
+	incorrectElm.innerText = incorrectCount;
+	timedElm.innerText = timedCount;
 }
 
 function renderQuestion({ number1, number2, operation }) {
 	number_1.innerText = number1;
 	number_2.innerText = number2;
 	operationElm.innerText = operation;
-	renderInfo();
 }
 
 function renderAnswers(answers, correctAnswer, controller) {
 	[...answersContent.children].forEach((elm) => elm.remove());
 
 	const fragment = document.createDocumentFragment();
+
 	for (let answer of answers) {
 		const answerBtn = document.createElement("button");
 		answerBtn.innerText = answer;
+		answerBtn.className = "btn";
+
 		const isCorrect = answer === correctAnswer;
+		if (isCorrect) answerBtn.classList.add("correct");
 
 		function handleAnswer() {
-			answerBtn.style.background = isCorrect ? "green" : "red";
+			const status = isCorrect ? "correct" : "incorrect";
+			answerBtn.classList.add(status);
+			question.status = status;
 			controller.clear();
-			if (isCorrect) {
-				win();
-				question.status = "correct";
-				init(controller.time);
-			} else {
-				lose();
-				question.status = "incorrect";
-				init(-2);
-			}
+			start(isCorrect ? controller.time : -2);
 		}
 
 		answerBtn.addEventListener("click", handleAnswer);
 		fragment.appendChild(answerBtn);
 	}
+
 	answersContent.appendChild(fragment);
 }
 
-// WIN FUNCTION
-function win() {
-	let win = document.createElement("div");
-	win.className = "win";
-	javob.appendChild(win)
+function renderPoints() {
+	if (questions.length < 2) return;
+	const { status } = questions[questions.length - 2];
+	const pointBtn = document.createElement("div");
+	pointBtn.className = `point ${status}`;
+	pointsContent.appendChild(pointBtn);
+	pointBtn.innerText = questions.length - 1;
 }
 
-function lose() {
-	let lose = document.createElement("div");
-	lose.className = "lose";
-	javob.appendChild(lose)
-}
+function renderResult() {
+	const points = document.createElement("div");
+	const obj = {
+		correct: questions.filter(({ status }) => status === "correct").length,
+		incorrect: questions.filter(({ status }) => status === "incorrect").length,
+		timed: questions.filter(({ status }) => status === "timed").length,
+	};
+	for (let status in obj) {
+		const point = document.createElement("li");
+		point.className = `point ${status}`;
+		point.innerText = obj[status];
+		points.appendChild(point);
+	}
 
-function timeof() {
-	let timeof = document.createElement("div");
-	timeof.className = "timeof";
-	javob.appendChild(timeof)
+	const showResultBtn = document.createElement("button");
+	showResultBtn.className = "btn";
+	showResultBtn.innerText = "Show result";
+
+	showResultBtn.addEventListener("click", handleShowResult);
+	resultZone.append(points, showResultBtn);
 }
 
 // HANDLER FUNCTIONS
 
-init();
+function handleShowResult() {
+	gameZone.style.pointerEvents = "none";
+	gameZone.classList.remove("hide");
+	resultZone.classList.add("hide");
+}
+startBtn.onclick = () => {
+	startBtn.classList.add("hide");
+	start();
+	gameZone.classList.remove("hide");
+};
